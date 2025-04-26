@@ -1,16 +1,12 @@
-
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import numpy as np
 
 # 1. Load the dataset
-df = pd.read_csv("/Users/13454/Desktop/Results_21Mar2022.csv")
+df = pd.read_csv("/Users/13454/Desktop/Results_21Mar2022.csv")  # 替换为你的数据路径
 
 # 2. Select relevant environmental impact columns
-env_columns = [
-    "mean_ghgs", "mean_land", "mean_watuse",
-    "mean_bio", "mean_acid", "mean_eut", "mean_watscar"
-]
+env_columns = [col for col in df.columns if col.startswith("mean_")]
 df_cleaned = df.dropna(subset=["diet_group"])
 
 # 3. Group by diet type and calculate the mean for each variable
@@ -22,31 +18,65 @@ df_grouped = df_grouped.loc[ordered_diets]
 
 # 5. Normalize the data for radar chart comparison (min-max scaling)
 data_norm = (df_grouped - df_grouped.min()) / (df_grouped.max() - df_grouped.min())
+data_norm = data_norm * 0.95 + 0.05  # Adjusted normalization for better visibility
 
-# 6. Set up radar chart axis and labels
-labels = [
-    "GHG Emissions", "Land Use", "Water Use",
-    "Biodiversity", "Acidification", "Eutrophication", "Water Scarcity"
-]
+# 6. Select 15 indicators (top 15 columns) for detailed radar chart
+selected_columns = data_norm.columns[:15]
+data = data_norm[selected_columns]
+labels = [col.replace("mean_", "").replace("_", " ").title() for col in selected_columns]
 angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-angles += angles[:1]  # close the loop
+labels += labels[:1]  # close the radar chart
 
-# 7. Plot the radar chart
-fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(polar=True))
+# 7. Create interactive radar chart
+fig = go.Figure()
 
-for diet in data_norm.index:
-    values = data_norm.loc[diet].tolist()
-    values += values[:1]
-    ax.plot(angles, values, label=diet)
-    ax.fill(angles, values, alpha=0.1)
+# Define color mapping for each diet group
+color_map = {
+    "vegan": "gold",
+    "veggie": "lightgreen",
+    "fish": "dodgerblue",
+    "meat50": "orange",
+    "meat": "red",
+    "meat100": "darkred"
+}
 
-# 8. Customize the appearance
-ax.set_title("Environmental Impact by Diet Type (All 6 Types, Normalized)", size=14)
-ax.set_xticks(angles[:-1])
-ax.set_xticklabels(labels, fontsize=10)
-ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.05))
+# Add traces for each diet group
+for diet in data.index:
+    values = data.loc[diet].tolist() + [data.loc[diet].tolist()[0]]
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=labels,
+        mode='lines+markers',
+        name=diet,
+        line=dict(color=color_map[diet], width=2.5 if diet == "vegan" else 1.5),
+        marker=dict(size=6),
+        hovertemplate=f"<b>{diet}</b><br>%{{theta}}: %{{r:.2f}}<extra></extra>"
+    ))
 
-# 9. Save the chart and show
-plt.tight_layout()
-plt.savefig("CW2_RadarChart_6DietTypes.png")
-plt.show()
+# 8. Customize chart layout
+fig.update_layout(
+    title="Environmental Impact by Diet Type – Detailed Radar Chart (15 Indicators)",
+    polar=dict(
+        radialaxis=dict(
+            visible=True,
+            range=[0, 1],
+            showticklabels=True,
+            tickfont_size=10
+        ),
+        angularaxis=dict(
+            rotation=90,
+            direction="clockwise"
+        )
+    ),
+    template="plotly_dark",
+    legend_title_text="Diet Group",
+    autosize=True
+)
+
+# 9. Show the chart
+fig.show()
+
+# 10. (Optional) Save the interactive radar chart as an HTML file
+fig.write_html("CW2_RadarChart_Interactive_15Indicators.html")
+
+
