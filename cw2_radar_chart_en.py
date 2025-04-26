@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import numpy as np
 
 # 1. Load the dataset
-df = pd.read_csv("/Users/13454/Desktop/Results_21Mar2022.csv")  # 替换为你的数据路径
+df = pd.read_csv("/Users/13454/Desktop/Results_21Mar2022.csv")  
 
 # 2. Select relevant environmental impact columns
 env_columns = [col for col in df.columns if col.startswith("mean_")]
